@@ -1,0 +1,41 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/agences"
+  to = "/.netlify/functions/agences"
+  status = 200
+
+[[redirects]]
+  from = "/api/tarifs"
+  to = "/.netlify/functions/tarifs"
+  status = 200
+
+[[redirects]]
+  from = "/api/reservations"
+  to = "/.netlify/functions/reservations"
+  status = 200
+
+[[redirects]]
+  from = "/api/paiement/:operateur/initier"
+  to = "/.netlify/functions/paiement-initier?operateur=:operateur"
+  status = 200
+
+[[redirects]]
+  from = "/api/paiement/statut/:reference"
+  to = "/.netlify/functions/paiement-statut?reference=:reference"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/otp/envoyer"
+  to = "/.netlify/functions/otp-envoyer"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/otp/verifier"
+  to = "/.netlify/functions/otp-verifier"
+  status = 200
