@@ -52,16 +52,3 @@ exports.handler = async (event) => {
     return erreur(502, "Échec de l'envoi du code.");
   }
 };
-    // ⚠️ Pas de "codeDemo" ici, volontairement : ce champ n'existe QUE
-    // dans la simulation locale côté client (MODE_DEMO). Un vrai
-    // backend ne renvoie jamais le code — ce serait une faille de
-    // sécurité qui rendrait toute la vérification inutile.
-    return json(200, { ok: true });
-  } catch (err) {
-    console.error('POST /auth/otp/envoyer', err);
-    if (err.message === 'TWILIO_NON_CONFIGURE') {
-      return erreur(503, "L'envoi de code n'est pas encore configuré côté serveur.");
-    }
-    return erreur(502, "Échec de l'envoi du code.");
-  }
-};
