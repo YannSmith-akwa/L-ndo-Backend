@@ -53,6 +53,7 @@
   from = "/api/admin/reservations"
   to = "/.netlify/functions/admin-reservations"
   status = 200
+  
   [[redirects]]
   from = "/api/admin/agences"
   to = "/.netlify/functions/admin-agences"
