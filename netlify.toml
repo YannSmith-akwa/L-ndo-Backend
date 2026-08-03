@@ -39,3 +39,21 @@
   from = "/api/auth/otp/verifier"
   to = "/.netlify/functions/otp-verifier"
   status = 200
+[[redirects]]
+  from = "/api/admin/trajets"
+  to = "/.netlify/functions/admin-trajets"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/tarifs"
+  to = "/.netlify/functions/admin-tarifs"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/reservations"
+  to = "/.netlify/functions/admin-reservations"
+  status = 200
+  [[redirects]]
+  from = "/api/admin/agences"
+  to = "/.netlify/functions/admin-agences"
+  status = 200
