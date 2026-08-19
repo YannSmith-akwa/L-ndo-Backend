@@ -78,3 +78,22 @@
   from = "/api/admin/agences"
   to = "/.netlify/functions/admin-agences"
   status = 200
+
+# ────────────────────────────────────────────────────────────
+# Comptes agence (agence.html) — authentification identifiant/mot de
+# passe propre, distincte du back-office administrateur ci-dessus.
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/agence/connexion"
+  to = "/.netlify/functions/agence-connexion"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/reservations"
+  to = "/.netlify/functions/agence-reservations"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/trajets"
+  to = "/.netlify/functions/agence-trajets"
+  status = 200
