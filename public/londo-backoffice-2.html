@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lōndo — Back-office</title>
+<style>
+  :root {
+    --vert: #0B4D33; --vert-clair: #17734A; --vert-profond: #052A1C;
+    --rouge: #9C1F3A; --rouge-pale: #F5E2E6;
+    --jaune: #CC9A1D; --jaune-clair: #FBF0D6; --jaune-fonce: #7A5C10;
+    --surface: #FBF8F1; --carte: #FFFFFF; --sombre: #1C1B17; --gris: #8C8371; --bordure: #E5DFCF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Roboto, 'Segoe UI', sans-serif; background: var(--surface); color: var(--sombre); }
+  header { background: linear-gradient(135deg, var(--vert), var(--vert-profond)); color: #fff; padding: 20px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; opacity: 0.75; font-size: 13px; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .champ { margin-bottom: 12px; }
+  .champ label { display: block; font-size: 11px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .champ input, .champ select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--bordure); border-radius: 10px; font-size: 15px; background: #fff; }
+  button { cursor: pointer; border: none; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 700; }
+  .btn-principal { background: var(--rouge); color: #fff; }
+  .btn-secondaire { background: var(--vert); color: #fff; }
+  .btn-discret { background: var(--bordure); color: var(--sombre); }
+  .btn-danger { background: var(--rouge-pale); color: var(--rouge); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bordure); }
+  th { font-size: 10px; text-transform: uppercase; color: var(--gris); letter-spacing: 0.5px; }
+  .onglets { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .onglet { padding: 10px 16px; border-radius: 20px; background: var(--carte); border: 1.5px solid var(--bordure); font-weight: 700; font-size: 13px; cursor: pointer; }
+  .onglet.actif { background: var(--vert); color: #fff; border-color: var(--vert); }
+  .page { display: none; }
+  .page.actif { display: block; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-paye { background: #E5EFE8; color: var(--vert); }
+  .badge-attente { background: var(--jaune-clair); color: var(--jaune-fonce); }
+  .badge-echoue { background: var(--rouge-pale); color: var(--rouge); }
+  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+  .msg-erreur { background: var(--rouge-pale); color: var(--rouge); }
+  .msg-ok { background: #E5EFE8; color: var(--vert); }
+  #ecranConnexion { max-width: 380px; margin: 60px auto; }
+  .ligne-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .petit-texte { font-size: 11px; color: var(--gris); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lōndo — Back-office</h1>
+  <p>Gestion des trajets, tarifs et réservations</p>
+</header>
+
+<main>
+  <!-- ÉCRAN DE CONNEXION -->
+  <div id="ecranConnexion" class="carte">
+    <div class="champ">
+      <label>Jeton d'administration</label>
+      <input type="password" id="champToken" placeholder="Collez votre ADMIN_TOKEN" />
+    </div>
+    <div id="msgConnexion"></div>
+    <button class="btn-principal" onclick="seConnecter()" style="width:100%">Se connecter</button>
+    <p class="petit-texte" style="margin-top:12px">Ce jeton est le même que celui configuré dans la variable d'environnement <code>ADMIN_TOKEN</code> sur Netlify. Il reste uniquement sur cet appareil (stockage local du navigateur), jamais envoyé ailleurs qu'à votre propre backend.</p>
+  </div>
+
+  <!-- APPLICATION (visible après connexion) -->
+  <div id="app" style="display:none">
+    <div class="onglets">
+      <div class="onglet actif" data-page="trajets" onclick="changerOnglet('trajets')">Trajets</div>
+      <div class="onglet" data-page="agences" onclick="changerOnglet('agences')">Agences</div>
+      <div class="onglet" data-page="tarifs" onclick="changerOnglet('tarifs')">Tarifs</div>
+      <div class="onglet" data-page="reservations" onclick="changerOnglet('reservations')">Réservations</div>
+      <div style="flex:1"></div>
+      <div class="onglet btn-discret" onclick="seDeconnecter()">Déconnexion</div>
+    </div>
+
+    <!-- TRAJETS -->
+    <div class="page actif" id="pageTrajets">
+      <div class="carte">
+        <h3 style="margin-top:0">Ajouter un trajet</h3>
+        <div class="grille2">
+          <div class="champ"><label>Agence</label>
+            <select id="nvAgence"></select>
+          </div>
+          <div class="champ"><label>Places</label><input type="number" id="nvPlaces" min="0" value="10" /></div>
+          <div class="champ"><label>Départ</label>
+            <select id="nvDepart"><option>Douala</option><option>Yaoundé</option></select>
+          </div>
+          <div class="champ"><label>Arrivée</label>
+            <select id="nvArrivee"><option>Yaoundé</option><option>Douala</option></select>
+          </div>
+          <div class="champ"><label>Heure (ex: 07h30)</label><input type="text" id="nvHeure" placeholder="07h30" /></div>
+        </div>
+        <button class="btn-secondaire" onclick="ajouterTrajet()">Ajouter</button>
+      </div>
+      <div id="msgTrajets"></div>
+      <div class="carte">
+        <table id="tableTrajets">
+          <thead><tr><th>Agence</th><th>Départ</th><th>Arrivée</th><th>Heure</th><th>Places</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AGENCES -->
+    <div class="page" id="pageAgences">
+      <div class="carte">
+        <h3 style="margin-top:0">Ajouter une agence</h3>
+        <div class="grille2">
+          <div class="champ"><label>Nom</label><input type="text" id="agNom" placeholder="Ex : Touristique Express" /></div>
+          <div class="champ"><label>Téléphone</label><input type="text" id="agTel" placeholder="233 xxx xxx" /></div>
+          <div class="champ"><label>Couleur (code hex)</label><input type="text" id="agCouleur" placeholder="#1D4E89" value="#1D4E89" /></div>
+          <div class="champ"><label>Couleur pâle (code hex)</label><input type="text" id="agCouleurPale" placeholder="#E7EEF6" value="#E7EEF6" /></div>
+          <div class="champ"><label>Slogan</label><input type="text" id="agSlogan" placeholder="Ex : Confort & Ponctualité" /></div>
+          <div class="champ"><label>Note (sur 5)</label><input type="number" id="agNote" step="0.1" min="0" max="5" value="4.5" /></div>
+        </div>
+        <p class="petit-texte">Les codes couleur (hex) sont ceux utilisés par l'app mobile pour distinguer visuellement chaque agence — <span id="apercuCouleur" style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1D4E89;vertical-align:middle"></span> aperçu de la couleur principale saisie ci-dessus.</p>
+        <div id="msgAgences"></div>
+        <button class="btn-secondaire" onclick="ajouterAgence()">Ajouter l'agence</button>
+      </div>
+      <div class="carte">
+        <table id="tableAgences">
+          <thead><tr><th>Nom</th><th>Téléphone</th><th>Slogan</th><th>Note</th><th>Couleur</th><th>Compte</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TARIFS -->
+    <div class="page" id="pageTarifs">
+      <div class="carte">
+        <h3 style="margin-top:0">Tarifs actuels</h3>
+        <div class="champ"><label>Prix aller simple (XAF)</label><input type="number" id="tPrixSimple" /></div>
+        <div class="champ"><label>Prix aller-retour (XAF)</label><input type="number" id="tPrixAr" /></div>
+        <div class="champ"><label>Commission de service (XAF)</label><input type="number" id="tCommission" /></div>
+        <div id="msgTarifs"></div>
+        <button class="btn-principal" onclick="sauvegarderTarifs()">Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- RÉSERVATIONS -->
+    <div class="page" id="pageReservations">
+      <div class="carte">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h3 style="margin:0">Réservations récentes</h3>
+          <button class="btn-discret" onclick="chargerReservations()">Actualiser</button>
+        </div>
+        <table id="tableReservations">
+          <thead><tr><th>Réf.</th><th>Agence</th><th>Trajet</th><th>Voyageur</th><th>Total</th><th>Statut</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ⚠️ Si votre backend change d'adresse, mettez à jour cette ligne.
+const API_URL = 'https://meek-strudel-659f09.netlify.app/api';
+
+function token() { return localStorage.getItem('londo_admin_token') || ''; }
+
+async function appelAdmin(chemin, options = {}) {
+  const res = await fetch(`${API_URL}${chemin}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token(), ...(options.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+  return data;
+}
+
+function afficherMsg(id, texte, type) {
+  document.getElementById(id).innerHTML = texte ? `<div class="msg msg-${type}">${texte}</div>` : '';
+}
+
+async function seConnecter() {
+  const saisi = document.getElementById('champToken').value.trim();
+  if (!saisi) { afficherMsg('msgConnexion', 'Veuillez saisir le jeton.', 'erreur'); return; }
+  localStorage.setItem('londo_admin_token', saisi);
+  try {
+    await appelAdmin('/admin/tarifs');
+    document.getElementById('ecranConnexion').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    chargerAgences(); chargerTrajets(); chargerTarifs(); chargerReservations();
+  } catch (err) {
+    localStorage.removeItem('londo_admin_token');
+    afficherMsg('msgConnexion', 'Jeton refusé : ' + err.message, 'erreur');
+  }
+}
+
+function seDeconnecter() {
+  localStorage.removeItem('londo_admin_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('ecranConnexion').style.display = 'block';
+  document.getElementById('champToken').value = '';
+}
+
+function changerOnglet(nom) {
+  document.querySelectorAll('.onglet[data-page]').forEach(el => el.classList.toggle('actif', el.dataset.page === nom));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('actif'));
+  document.getElementById('page' + nom.charAt(0).toUpperCase() + nom.slice(1)).classList.add('actif');
+}
+
+// ── TRAJETS ──────────────────────────────────────────────
+async function chargerTrajets() {
+  try {
+    const { trajets } = await appelAdmin('/admin/trajets');
+    const corps = document.querySelector('#tableTrajets tbody');
+    corps.innerHTML = trajets.map(t => `
+      <tr>
+        <td>${t.agenceNom}</td>
+        <td>${t.depart}</td>
+        <td>${t.arrivee}</td>
+        <td><input value="${t.heure}" style="width:70px" onchange="modifierTrajet(${t.id}, 'heure', this.value)" /></td>
+        <td><input type="number" value="${t.places}" style="width:60px" onchange="modifierTrajet(${t.id}, 'places', this.value)" /></td>
+        <td><button class="btn-danger" onclick="supprimerTrajet(${t.id})">Suppr.</button></td>
+      </tr>
+    `).join('');
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function ajouterTrajet() {
+  try {
+    await appelAdmin('/admin/trajets', {
+      method: 'POST',
+      body: JSON.stringify({
+        agence_id: Number(document.getElementById('nvAgence').value),
+        depart: document.getElementById('nvDepart').value,
+        arrivee: document.getElementById('nvArrivee').value,
+        heure: document.getElementById('nvHeure').value,
+        places: Number(document.getElementById('nvPlaces').value),
+      }),
+    });
+    document.getElementById('nvHeure').value = '';
+    afficherMsg('msgTrajets', 'Trajet ajouté.', 'ok');
+    chargerTrajets();
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function modifierTrajet(id, champ, valeur) {
+  try {
+    await appelAdmin('/admin/trajets', { method: 'PUT', body: JSON.stringify({ id, [champ]: champ === 'places' ? Number(valeur) : valeur }) });
+    afficherMsg('msgTrajets', 'Trajet mis à jour.', 'ok');
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function supprimerTrajet(id) {
+  if (!confirm('Supprimer ce trajet ?')) return;
+  try {
+    await appelAdmin('/admin/trajets?id=' + id, { method: 'DELETE' });
+    chargerTrajets();
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+// ── AGENCES ──────────────────────────────────────────────
+async function chargerAgences() {
+  try {
+    const { agences } = await appelAdmin('/admin/agences');
+
+    const corps = document.querySelector('#tableAgences tbody');
+    corps.innerHTML = agences.map(a => `
+      <tr>
+        <td>${a.nom}</td>
+        <td>${a.tel || ''}</td>
+        <td>${a.slogan || ''}</td>
+        <td>${a.note ?? ''}</td>
+        <td><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${a.couleur};vertical-align:middle" title="${a.couleur}"></span></td>
+        <td>${a.compteActif
+          ? `<span class="badge badge-paye">Actif</span><br/><span class="petit-texte">${a.identifiant}</span>`
+          : `<span class="badge badge-attente">Aucun</span>`}</td>
+        <td>
+          <button class="btn-discret" onclick="definirIdentifiants(${a.id}, '${a.nom.replace(/'/g, "\\'")}')">${a.compteActif ? 'Changer' : 'Créer'}</button>
+          <button class="btn-danger" onclick="supprimerAgence(${a.id}, '${a.nom.replace(/'/g, "\\'")}')">Suppr.</button>
+        </td>
+      </tr>
+    `).join('');
+
+    // Le sélecteur "Agence" du formulaire d'ajout de trajet se remplit
+    // depuis cette même liste — jamais deux endroits différents à tenir
+    // à jour manuellement.
+    const select = document.getElementById('nvAgence');
+    if (select) select.innerHTML = agences.map(a => `<option value="${a.id}">${a.nom}</option>`).join('');
+  } catch (err) { afficherMsg('msgAgences', err.message, 'erreur'); }
+}
+
+// Définit ou change les identifiants de connexion d'une agence — c'est
+// vous qui choisissez ces identifiants et les communiquez à l'agence
+// (téléphone, WhatsApp…), il n'y a pas d'auto-inscription.
+async function definirIdentifiants(id, nom) {
+  const identifiant = prompt(`Identifiant de connexion pour "${nom}" :`);
+  if (!identifiant) return;
+  const motDePasse = prompt(`Mot de passe pour "${nom}" (8 caractères minimum) :`);
+  if (!motDePasse) return;
+  try {
+    await appelAdmin('/admin/agences', { method: 'PUT', body: JSON.stringify({ id, identifiant, motDePasse }) });
+    afficherMsg('msgAgences', `Identifiants définis pour ${nom}.`, 'ok');
+    chargerAgences();
+  } catch (err) {
+    afficherMsg('msgAgences', err.message, 'erreur');
+  }
+}
+
+async function ajouterAgence() {
+  const nom = document.getElementById('agNom').value.trim();
+  const couleur = document.getElementById('agCouleur').value.trim();
+  const couleurPale = document.getElementById('agCouleurPale').value.trim();
+  if (!nom || !couleur || !couleurPale) {
+    afficherMsg('msgAgences', 'Le nom et les deux couleurs sont requis.', 'erreur');
+    return;
+  }
+  try {
+    await appelAdmin('/admin/agences', {
+      method: 'POST',
+      body: JSON.stringify({
+        nom, couleur, couleurPale,
+        slogan: document.getElementById('agSlogan').value.trim() || null,
+        tel: document.getElementById('agTel').value.trim() || null,
+        note: Number(document.getElementById('agNote').value) || null,
+      }),
+    });
+    document.getElementById('agNom').value = '';
+    document.getElementById('agSlogan').value = '';
+    document.getElementById('agTel').value = '';
+    afficherMsg('msgAgences', 'Agence ajoutée.', 'ok');
+    chargerAgences();
+  } catch (err) { afficherMsg('msgAgences', err.message, 'erreur'); }
+}
+
+async function supprimerAgence(id, nom) {
+  if (!confirm(`Supprimer l'agence "${nom}" ?`)) return;
+  try {
+    await appelAdmin('/admin/agences?id=' + id, { method: 'DELETE' });
+    chargerAgences();
+  } catch (err) {
+    // Le backend refuse explicitement si des trajets sont encore
+    // rattachés à cette agence — message affiché tel quel, il est déjà clair.
+    afficherMsg('msgAgences', err.message, 'erreur');
+  }
+}
+
+// Aperçu couleur en direct pendant la saisie.
+document.addEventListener('DOMContentLoaded', () => {
+  const champCouleur = document.getElementById('agCouleur');
+  const apercu = document.getElementById('apercuCouleur');
+  if (champCouleur && apercu) {
+    champCouleur.addEventListener('input', () => { apercu.style.background = champCouleur.value; });
+  }
+});
+
+// ── TARIFS ───────────────────────────────────────────────
+async function chargerTarifs() {
+  const t = await appelAdmin('/admin/tarifs');
+  document.getElementById('tPrixSimple').value = t.prixSimple || '';
+  document.getElementById('tPrixAr').value = t.prixAr || '';
+  document.getElementById('tCommission').value = t.commission || '';
+}
+
+async function sauvegarderTarifs() {
+  try {
+    await appelAdmin('/admin/tarifs', {
+      method: 'PUT',
+      body: JSON.stringify({
+        prixSimple: Number(document.getElementById('tPrixSimple').value),
+        prixAr: Number(document.getElementById('tPrixAr').value),
+        commission: Number(document.getElementById('tCommission').value),
+      }),
+    });
+    afficherMsg('msgTarifs', 'Tarifs enregistrés.', 'ok');
+  } catch (err) { afficherMsg('msgTarifs', err.message, 'erreur'); }
+}
+
+// ── RÉSERVATIONS ─────────────────────────────────────────
+async function chargerReservations() {
+  const { reservations } = await appelAdmin('/admin/reservations');
+  const corps = document.querySelector('#tableReservations tbody');
+  const classeBadge = { 'payé': 'badge-paye', 'en_attente': 'badge-attente', 'echoue': 'badge-echoue', 'expire': 'badge-echoue' };
+  corps.innerHTML = reservations.map(r => `
+    <tr>
+      <td>${r.reference}</td>
+      <td>${r.agenceNom}</td>
+      <td>${r.depart} → ${r.arrivee}</td>
+      <td>${r.nomVoyageur}</td>
+      <td>${Number(r.total).toLocaleString('fr-FR')} XAF</td>
+      <td><span class="badge ${classeBadge[r.statut] || ''}">${r.statut}</span></td>
+    </tr>
+  `).join('');
+}
+
+// Reconnexion automatique si un jeton est déjà enregistré sur cet appareil.
+if (token()) {
+  document.getElementById('ecranConnexion').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  chargerAgences(); chargerTrajets(); chargerTarifs(); chargerReservations();
+}
+</script>
+</body>
+</html>
