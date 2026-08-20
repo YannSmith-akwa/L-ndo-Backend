@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lōndo — Espace agence</title>
+<style>
+  :root {
+    --vert: #0B4D33; --vert-clair: #17734A; --vert-profond: #052A1C;
+    --rouge: #9C1F3A; --rouge-pale: #F5E2E6;
+    --jaune: #CC9A1D; --jaune-clair: #FBF0D6; --jaune-fonce: #7A5C10;
+    --surface: #FBF8F1; --carte: #FFFFFF; --sombre: #1C1B17; --gris: #8C8371; --bordure: #E5DFCF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Roboto, 'Segoe UI', sans-serif; background: var(--surface); color: var(--sombre); }
+  header { background: linear-gradient(135deg, var(--vert), var(--vert-profond)); color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; opacity: 0.75; font-size: 13px; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .champ { margin-bottom: 12px; }
+  .champ label { display: block; font-size: 11px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .champ input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--bordure); border-radius: 10px; font-size: 15px; background: #fff; }
+  button { cursor: pointer; border: none; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 700; }
+  .btn-principal { background: var(--rouge); color: #fff; }
+  .btn-discret { background: var(--bordure); color: var(--sombre); font-size: 12px; padding: 8px 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bordure); }
+  th { font-size: 10px; text-transform: uppercase; color: var(--gris); letter-spacing: 0.5px; }
+  .onglets { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .onglet { padding: 10px 16px; border-radius: 20px; background: var(--carte); border: 1.5px solid var(--bordure); font-weight: 700; font-size: 13px; cursor: pointer; }
+  .onglet.actif { background: var(--vert); color: #fff; border-color: var(--vert); }
+  .page { display: none; }
+  .page.actif { display: block; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-paye { background: #E5EFE8; color: var(--vert); }
+  .badge-attente { background: var(--jaune-clair); color: var(--jaune-fonce); }
+  .badge-echoue { background: var(--rouge-pale); color: var(--rouge); }
+  .badge-expire { background: var(--bordure); color: var(--gris); }
+  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+  .msg-erreur { background: var(--rouge-pale); color: var(--rouge); }
+  .msg-ok { background: #E5EFE8; color: var(--vert); }
+  #ecranConnexion { max-width: 380px; margin: 60px auto; }
+  .petit-texte { font-size: 11px; color: var(--gris); }
+  input[type="text"].champ-inline, input[type="number"].champ-inline { padding: 6px 8px; border: 1.5px solid var(--bordure); border-radius: 8px; font-size: 13px; }
+  .lien-discret { color: var(--gris); font-size: 12px; text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Lōndo — Espace agence</h1>
+    <p id="nomAgenceAffiche">Vos réservations et vos trajets</p>
+  </div>
+  <button class="lien-discret" id="btnDeconnexion" style="display:none;color:#fff" onclick="seDeconnecter()">Se déconnecter</button>
+</header>
+
+<main>
+  <!-- ÉCRAN DE CONNEXION -->
+  <div id="ecranConnexion" class="carte">
+    <div class="champ">
+      <label>Identifiant</label>
+      <input type="text" id="champIdentifiant" placeholder="Identifiant de votre agence" autocapitalize="none" />
+    </div>
+    <div class="champ">
+      <label>Mot de passe</label>
+      <input type="password" id="champMotDePasse" placeholder="Mot de passe" />
+    </div>
+    <div id="msgConnexion"></div>
+    <button class="btn-principal" onclick="seConnecter()" style="width:100%">Se connecter</button>
+    <p class="petit-texte" style="margin-top:12px">Ces identifiants vous sont communiqués par l'administrateur de la plateforme — pas d'auto-inscription possible ici.</p>
+  </div>
+
+  <!-- APPLICATION (visible après connexion) -->
+  <div id="app" style="display:none">
+    <div class="onglets">
+      <div class="onglet actif" data-page="reservations" onclick="changerOnglet('reservations')">Mes réservations</div>
+      <div class="onglet" data-page="trajets" onclick="changerOnglet('trajets')">Mes trajets</div>
+      <div class="onglet" data-page="embarquement" onclick="changerOnglet('embarquement')">Embarquement</div>
+    </div>
+
+    <!-- RÉSERVATIONS -->
+    <div class="page actif" id="pageReservations">
+      <div class="carte">
+        <div id="msgReservations"></div>
+        <table id="tableReservations">
+          <thead><tr><th>Référence</th><th>Trajet</th><th>Date</th><th>Voyageur</th><th>Nb</th><th>Total</th><th>Statut</th><th>Embarqué</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="petit-texte" style="margin-top:10px">Les 100 réservations les plus récentes pour votre agence. Lecture seule — le statut évolue automatiquement selon le paiement.</p>
+      </div>
+    </div>
+
+    <!-- TRAJETS -->
+    <div class="page" id="pageTrajets">
+      <div class="carte">
+        <div id="msgTrajets"></div>
+        <table id="tableTrajets">
+          <thead><tr><th>Départ</th><th>Arrivée</th><th>Heure</th><th>Places</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="petit-texte" style="margin-top:10px">Modifiez l'heure ou le nombre de places directement dans le tableau — enregistré automatiquement à chaque changement. Pour ajouter ou supprimer un trajet, contactez l'administrateur de la plateforme.</p>
+      </div>
+    </div>
+
+    <!-- EMBARQUEMENT -->
+    <div class="page" id="pageEmbarquement">
+      <div class="carte">
+        <div class="champ">
+          <label>Référence du billet</label>
+          <input type="text" id="champReferenceEmbarquement" placeholder="Ex : UE-2026-000123" autocapitalize="characters" style="font-size:18px;text-transform:uppercase" />
+        </div>
+        <div id="msgEmbarquement"></div>
+        <button class="btn-principal" onclick="validerEmbarquement()" style="width:100%;padding:16px;font-size:16px">Valider l'embarquement</button>
+        <p class="petit-texte" style="margin-top:12px">Demandez au voyageur de montrer son billet (QR code ou référence à l'écran), saisissez la référence, validez. Un billet déjà utilisé est refusé automatiquement, avec l'heure de son premier passage.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ⚠️ Si le backend change d'adresse, mettez à jour cette ligne.
+const API_URL = 'https://meek-strudel-659f09.netlify.app/api';
+
+function jeton() { return localStorage.getItem('londo_agence_jeton') || ''; }
+
+async function appelAgence(chemin, options = {}) {
+  const res = await fetch(`${API_URL}${chemin}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jeton()}`, ...(options.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+  return data;
+}
+
+function afficherMsg(id, texte, type) {
+  document.getElementById(id).innerHTML = texte ? `<div class="msg msg-${type}">${texte}</div>` : '';
+}
+
+async function seConnecter() {
+  const identifiant = document.getElementById('champIdentifiant').value.trim();
+  const motDePasse = document.getElementById('champMotDePasse').value;
+  if (!identifiant || !motDePasse) { afficherMsg('msgConnexion', 'Identifiant et mot de passe requis.', 'erreur'); return; }
+  try {
+    const res = await fetch(`${API_URL}/agence/connexion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifiant, motDePasse }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+    localStorage.setItem('londo_agence_jeton', data.jeton);
+    localStorage.setItem('londo_agence_nom', data.agence.nom);
+    afficherApp();
+  } catch (err) {
+    afficherMsg('msgConnexion', err.message, 'erreur');
+  }
+}
+
+function afficherApp() {
+  document.getElementById('ecranConnexion').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('btnDeconnexion').style.display = 'inline-block';
+  document.getElementById('nomAgenceAffiche').textContent = localStorage.getItem('londo_agence_nom') || 'Vos réservations et vos trajets';
+  chargerReservations();
+  chargerTrajets();
+}
+
+function seDeconnecter() {
+  localStorage.removeItem('londo_agence_jeton');
+  localStorage.removeItem('londo_agence_nom');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('btnDeconnexion').style.display = 'none';
+  document.getElementById('ecranConnexion').style.display = 'block';
+  document.getElementById('champIdentifiant').value = '';
+  document.getElementById('champMotDePasse').value = '';
+}
+
+function changerOnglet(nom) {
+  document.querySelectorAll('.onglet').forEach(o => o.classList.toggle('actif', o.dataset.page === nom));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('actif'));
+  document.getElementById('page' + nom.charAt(0).toUpperCase() + nom.slice(1)).classList.add('actif');
+}
+
+const BADGE_STATUT = { 'payé': 'paye', 'en_attente': 'attente', 'echoue': 'echoue', 'expire': 'expire' };
+const LABEL_STATUT = { 'payé': 'Payé', 'en_attente': 'En attente', 'echoue': 'Échoué', 'expire': 'Expiré' };
+
+async function chargerReservations() {
+  try {
+    const { reservations } = await appelAgence('/agence/reservations');
+    document.querySelector('#tableReservations tbody').innerHTML = reservations.map(r => `
+      <tr>
+        <td>${r.reference}</td>
+        <td>${r.depart} → ${r.arrivee} (${r.heure})</td>
+        <td>${r.dateVoyage}</td>
+        <td>${r.nomVoyageur}</td>
+        <td>${r.nbVoyageurs}</td>
+        <td>${r.total} XAF</td>
+        <td><span class="badge badge-${BADGE_STATUT[r.statut] || 'attente'}">${LABEL_STATUT[r.statut] || r.statut}</span></td>
+        <td>${r.embarque ? '<span class="badge badge-paye">Embarqué</span>' : ''}</td>
+      </tr>
+    `).join('');
+  } catch (err) { afficherMsg('msgReservations', err.message, 'erreur'); }
+}
+
+async function validerEmbarquement() {
+  const champ = document.getElementById('champReferenceEmbarquement');
+  const reference = champ.value.trim();
+  if (!reference) { afficherMsg('msgEmbarquement', 'Saisissez une référence.', 'erreur'); return; }
+  try {
+    const data = await appelAgence('/agence/embarquement', { method: 'POST', body: JSON.stringify({ reference }) });
+    afficherMsg('msgEmbarquement', `✓ Embarquement validé — ${data.nomVoyageur} (pièce : ${data.pieceId})`, 'ok');
+    champ.value = '';
+    champ.focus();
+    chargerReservations(); // pour que l'onglet Réservations reflète le nouvel état si on y retourne
+  } catch (err) {
+    afficherMsg('msgEmbarquement', err.message, 'erreur');
+  }
+}
+
+async function chargerTrajets() {
+  try {
+    const { trajets } = await appelAgence('/agence/trajets');
+    document.querySelector('#tableTrajets tbody').innerHTML = trajets.map(t => `
+      <tr>
+        <td>${t.depart}</td>
+        <td>${t.arrivee}</td>
+        <td><input class="champ-inline" type="text" value="${t.heure}" style="width:70px" onchange="modifierTrajet(${t.id}, 'heure', this.value)" /></td>
+        <td><input class="champ-inline" type="number" value="${t.places}" style="width:60px" onchange="modifierTrajet(${t.id}, 'places', this.value)" /></td>
+      </tr>
+    `).join('');
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function modifierTrajet(id, champ, valeur) {
+  try {
+    await appelAgence('/agence/trajets', { method: 'PUT', body: JSON.stringify({ id, [champ]: champ === 'places' ? Number(valeur) : valeur }) });
+    afficherMsg('msgTrajets', 'Trajet mis à jour.', 'ok');
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+// Reconnexion automatique si un jeton est déjà stocké sur cet appareil.
+if (jeton()) afficherApp();
+</script>
+</body>
+</html>
