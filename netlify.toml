@@ -131,3 +131,8 @@
   from = "/api/agence/embarquement"
   to = "/.netlify/functions/agence-embarquement"
   status = 200
+
+  [[redirects]]
+   from = "/api/agence/statistiques" 
+   to = "/.netlify/functions/agence-statistiques"
+   status = 200
