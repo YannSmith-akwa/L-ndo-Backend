@@ -1,0 +1,182 @@
+[build]
+  functions = "netlify/functions"
+  # Rien à construire côté "site" : ce projet n'est qu'une API.
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Fonction planifiée : expire les réservations abandonnées et purge les
+# vieilles tentatives OTP (voir netlify/functions/expirer-reservations.js).
+[functions."expirer-reservations"]
+  schedule = "*/10 * * * *"
+
+# ────────────────────────────────────────────────────────────
+# En-têtes de sécurité pour les deux interfaces web authentifiées
+# (agence.html, londo-backoffice-2.html) : elles manipulent un jeton
+# JWT agence / le ADMIN_TOKEN, souvent conservé dans le stockage du
+# navigateur. X-Frame-Options + frame-ancestors bloquent le clickjacking
+# (embarquer la page dans un <iframe> tiers pour piéger un clic).
+# CSP volontairement permissive sur script-src/style-src ('unsafe-inline')
+# car ces deux pages sont des fichiers HTML autonomes, CSS/JS en ligne,
+# sans build ni serveur de rendu — pas de nonce possible sur du contenu
+# statique. Vérifié : aucune des deux ne charge de ressource externe
+# (pas de <script src="http...">, pas de police/CDN tiers), donc
+# default-src/connect-src 'self' ne casse rien.
+# ────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/agence.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+[[headers]]
+  for = "/londo-backoffice-2.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+# ────────────────────────────────────────────────────────────
+# Redirections : exposent les fonctions sous des chemins propres
+# /api/... qui correspondent EXACTEMENT à ce que le client React
+# Native appelle (API_URL = https://<votre-site>.netlify.app/api
+# ou votre domaine personnalisé, ex. api.londo.cm une fois pointé
+# vers ce site Netlify).
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/agences"
+  to = "/.netlify/functions/agences"
+  status = 200
+
+[[redirects]]
+  from = "/api/tarifs"
+  to = "/.netlify/functions/tarifs"
+  status = 200
+
+[[redirects]]
+  from = "/api/reservations"
+  to = "/.netlify/functions/reservations"
+  status = 200
+
+[[redirects]]
+  from = "/api/paiement/:operateur/initier"
+  to = "/.netlify/functions/paiement-initier?operateur=:operateur"
+  status = 200
+
+[[redirects]]
+  from = "/api/paiement/statut/:reference"
+  to = "/.netlify/functions/paiement-statut?reference=:reference"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/otp/envoyer"
+  to = "/.netlify/functions/otp-envoyer"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/otp/verifier"
+  to = "/.netlify/functions/otp-verifier"
+  status = 200
+
+# ────────────────────────────────────────────────────────────
+# Back-office admin (londo-backoffice-2.html) — protégé par le header
+# X-Admin-Token, comparé à la variable d'environnement ADMIN_TOKEN
+# (voir netlify/functions/_lib/admin.js). Penser à définir ADMIN_TOKEN
+# sur Netlify avant d'utiliser ces routes.
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/admin/trajets"
+  to = "/.netlify/functions/admin-trajets"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/tarifs"
+  to = "/.netlify/functions/admin-tarifs"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/reservations"
+  to = "/.netlify/functions/admin-reservations"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/statistiques"
+  to = "/.netlify/functions/admin-statistiques"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/reversements"
+  to = "/.netlify/functions/admin-reversements"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/agences"
+  to = "/.netlify/functions/admin-agences"
+  status = 200
+
+# ────────────────────────────────────────────────────────────
+# RBAC (12/09/2026) — comptes individuels back-office et audit.
+# Coexiste avec ADMIN_TOKEN ci-dessus, voir _lib/rbac.js.
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/admin/connexion"
+  to = "/.netlify/functions/admin-connexion"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/utilisateurs"
+  to = "/.netlify/functions/admin-utilisateurs"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/audit"
+  to = "/.netlify/functions/admin-audit"
+  status = 200
+
+# ────────────────────────────────────────────────────────────
+# Comptes agence (agence.html) — authentification identifiant/mot de
+# passe propre, distincte du back-office administrateur ci-dessus.
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/agence/connexion"
+  to = "/.netlify/functions/agence-connexion"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/reservations"
+  to = "/.netlify/functions/agence-reservations"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/trajets"
+  to = "/.netlify/functions/agence-trajets"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/embarquement"
+  to = "/.netlify/functions/agence-embarquement"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/statistiques"
+  to = "/.netlify/functions/agence-statistiques"
+  status = 200
+
+# ────────────────────────────────────────────────────────────
+# RBAC (12/09/2026) — comptes employé individuels côté agence
+# (chef_agence / agent_guichet). Coexiste avec /api/agence/connexion
+# ci-dessus (compte agence historique, mêmes droits qu'un chef_agence).
+# ────────────────────────────────────────────────────────────
+[[redirects]]
+  from = "/api/employe/connexion"
+  to = "/.netlify/functions/employe-connexion"
+  status = 200
+
+[[redirects]]
+  from = "/api/agence/employes"
+  to = "/.netlify/functions/agence-employes"
+  status = 200
