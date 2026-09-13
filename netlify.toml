@@ -151,6 +151,11 @@
   to = "/.netlify/functions/agence-embarquement"
   status = 200
 
+[[redirects]]
+  from = "/api/agence/statistiques"
+  to = "/.netlify/functions/agence-statistiques"
+  status = 200
+  
 # ────────────────────────────────────────────────────────────
 # RBAC (12/09/2026) — comptes employé individuels côté agence
 # (chef_agence / agent_guichet). Coexiste avec /api/agence/connexion
