@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lōndo — Back-office</title>
+<style>
+  :root {
+    --vert: #0B4D33; --vert-clair: #17734A; --vert-profond: #052A1C;
+    --rouge: #9C1F3A; --rouge-pale: #F5E2E6;
+    --jaune: #CC9A1D; --jaune-clair: #FBF0D6; --jaune-fonce: #7A5C10;
+    --surface: #FBF8F1; --carte: #FFFFFF; --sombre: #1C1B17; --gris: #8C8371; --bordure: #E5DFCF;
+    --ombre-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --ombre-md: 0 8px 20px rgba(11,77,51,0.12);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Roboto, 'Segoe UI', sans-serif; background: var(--surface); color: var(--sombre); }
+  header { background: linear-gradient(135deg, var(--vert), var(--vert-profond)); color: #fff; padding: 20px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; opacity: 0.75; font-size: 13px; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .carte { background: var(--carte); border: 1px solid var(--bordure); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: var(--ombre-sm); transition: box-shadow 0.25s cubic-bezier(.22,1,.36,1), transform 0.25s cubic-bezier(.22,1,.36,1); }
+  .carte:hover { box-shadow: var(--ombre-md); transform: translateY(-2px); }
+  .champ { margin-bottom: 12px; }
+  .champ label { display: block; font-size: 11px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .champ input, .champ select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--bordure); border-radius: 10px; font-size: 15px; background: #fff; }
+  button { cursor: pointer; border: none; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 700; transition: all 0.2s ease; font-family: inherit; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  button:active { transform: scale(0.97); }
+  button:focus-visible, .onglet:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; }
+  .btn-principal { background: var(--rouge); color: #fff; }
+  .btn-secondaire { background: var(--vert); color: #fff; }
+  .btn-discret { background: var(--bordure); color: var(--sombre); }
+  .btn-danger { background: var(--rouge-pale); color: var(--rouge); }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: -2px; margin-right: 7px; opacity: 0.85; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toasts { position: fixed; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; max-width: 340px; width: calc(100% - 32px); }
+  .toast { position: relative; overflow: hidden; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px 15px; border-radius: 10px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); animation: toastEntree 0.3s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes toastEntree { from { opacity: 0; transform: translateX(24px) scale(0.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
+  .toast span { flex: 1; }
+  .toast-fermer { background: none; border: none; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; opacity: 0.6; }
+  .toast-fermer:hover { opacity: 1; }
+  .toast-barre { position: absolute; left: 0; bottom: 0; height: 3px; background: currentColor; opacity: 0.4; animation-name: toastBarre; animation-timing-function: linear; animation-fill-mode: forwards; }
+  @keyframes toastBarre { from { width: 100%; } to { width: 0%; } }
+  .etat-vide { text-align: center; padding: 26px 12px; color: var(--gris); font-size: 13px; }
+  .etat-vide button { margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bordure); }
+  th { font-size: 10px; text-transform: uppercase; color: var(--gris); letter-spacing: 0.5px; }
+  tbody tr:hover { background-color: rgba(0,0,0,0.03); }
+  @keyframes ligneApparait { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  tbody tr { animation: ligneApparait 0.25s ease both; }
+  .table-scroll { overflow-x: auto; }
+  .onglets { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .onglet { padding: 10px 16px; border-radius: 20px; background: var(--carte); border: 1.5px solid var(--bordure); font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s ease; }
+  .onglet.actif { background: var(--vert); color: #fff; border-color: var(--vert); }
+  .page { display: none; }
+  .page.actif { display: block; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-paye { background: #E5EFE8; color: var(--vert); }
+  .badge-attente { background: var(--jaune-clair); color: var(--jaune-fonce); }
+  .badge-echoue { background: var(--rouge-pale); color: var(--rouge); }
+  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+  .msg-erreur { background: var(--rouge-pale); color: var(--rouge); }
+  .msg-ok { background: #E5EFE8; color: var(--vert); }
+  #ecranConnexion { max-width: 380px; margin: 60px auto; }
+  .ligne-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .petit-texte { font-size: 11px; color: var(--gris); }
+</style>
+</head>
+<body>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<header>
+  <h1>Lōndo — Back-office</h1>
+  <p>Gestion des trajets, tarifs et réservations</p>
+</header>
+
+<main>
+  <!-- ÉCRAN DE CONNEXION -->
+  <div id="ecranConnexion" class="carte">
+    <div class="onglets" style="margin-bottom:16px">
+      <button type="button" class="onglet actif" id="modeCompte" onclick="basculerModeConnexion('compte')">Mon compte</button>
+      <button type="button" class="onglet" id="modeLegacy" onclick="basculerModeConnexion('legacy')">Jeton (legacy)</button>
+    </div>
+
+    <div id="formCompte">
+      <div class="champ">
+        <label>Identifiant</label>
+        <input type="text" id="champAdminIdentifiant" placeholder="Votre identifiant" autocapitalize="none" />
+      </div>
+      <div class="champ">
+        <label>Mot de passe</label>
+        <input type="password" id="champAdminMotDePasse" placeholder="Mot de passe" onkeyup="if(event.key==='Enter') seConnecterCompte(event)" />
+      </div>
+      <button class="btn-principal" onclick="seConnecterCompte(event)" style="width:100%">Se connecter</button>
+    </div>
+
+    <div id="formLegacy" style="display:none">
+      <div class="champ">
+        <label>Jeton d'administration</label>
+        <input type="password" id="champToken" placeholder="Collez votre ADMIN_TOKEN" onkeyup="if(event.key==='Enter') seConnecterLegacy(event)" />
+      </div>
+      <button class="btn-principal" onclick="seConnecterLegacy(event)" style="width:100%">Se connecter</button>
+      <p class="petit-texte" style="margin-top:12px">Ce jeton est le même que celui configuré dans la variable d'environnement <code>ADMIN_TOKEN</code> sur Netlify. À réserver au dépannage : les actions faites avec ce jeton sont journalisées sans identité individuelle — préférez un compte personnel au quotidien.</p>
+    </div>
+  </div>
+
+  <!-- APPLICATION (visible après connexion) -->
+  <div id="app" style="display:none">
+    <div class="onglets">
+      <div role="tablist" aria-label="Sections du back-office" style="display:contents">
+        <button type="button" class="onglet actif" id="onglet-trajets" role="tab" aria-selected="true" aria-controls="pageTrajets" tabindex="0" data-page="trajets" onclick="changerOnglet('trajets')" onkeydown="ongletsClavier(event)">Trajets</button>
+        <button type="button" class="onglet" id="onglet-agences" role="tab" aria-selected="false" aria-controls="pageAgences" tabindex="-1" data-page="agences" onclick="changerOnglet('agences')" onkeydown="ongletsClavier(event)">Agences</button>
+        <button type="button" class="onglet" id="onglet-tarifs" role="tab" aria-selected="false" aria-controls="pageTarifs" tabindex="-1" data-page="tarifs" onclick="changerOnglet('tarifs')" onkeydown="ongletsClavier(event)">Tarifs</button>
+        <button type="button" class="onglet" id="onglet-reservations" role="tab" aria-selected="false" aria-controls="pageReservations" tabindex="-1" data-page="reservations" onclick="changerOnglet('reservations')" onkeydown="ongletsClavier(event)">Réservations</button>
+        <button type="button" class="onglet" id="onglet-comptes" role="tab" aria-selected="false" aria-controls="pageComptes" tabindex="-1" data-page="comptes" onclick="changerOnglet('comptes')" onkeydown="ongletsClavier(event)" style="display:none">Comptes</button>
+        <button type="button" class="onglet" id="onglet-journal" role="tab" aria-selected="false" aria-controls="pageJournal" tabindex="-1" data-page="journal" onclick="changerOnglet('journal')" onkeydown="ongletsClavier(event)" style="display:none">Journal</button>
+      </div>
+      <div style="flex:1"></div>
+      <span class="petit-texte" id="adminUtilisateurAffiche" style="align-self:center;margin-right:4px"></span>
+      <button type="button" class="onglet btn-discret" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+
+    <!-- TRAJETS -->
+    <div class="page actif" id="pageTrajets" role="tabpanel" aria-labelledby="onglet-trajets" tabindex="0">
+      <div class="carte reserve-super-admin">
+        <h3 style="margin-top:0">Ajouter un trajet</h3>
+        <div class="grille2">
+          <div class="champ"><label>Agence</label>
+            <select id="nvAgence"></select>
+          </div>
+          <div class="champ"><label>Places</label><input type="number" id="nvPlaces" min="0" value="10" /></div>
+          <div class="champ"><label>Départ</label>
+            <select id="nvDepart"><option>Douala</option><option>Yaoundé</option></select>
+          </div>
+          <div class="champ"><label>Arrivée</label>
+            <select id="nvArrivee"><option>Yaoundé</option><option>Douala</option></select>
+          </div>
+          <div class="champ"><label>Heure</label><input type="time" id="nvHeure" /></div>
+        </div>
+        <button class="btn-secondaire" onclick="ajouterTrajet(event)">Ajouter</button>
+      </div>
+      <div class="carte">
+        <div class="table-scroll">
+        <table id="tableTrajets">
+          <thead><tr><th>Agence</th><th>Départ</th><th>Arrivée</th><th>Heure</th><th>Places</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENCES -->
+    <div class="page" id="pageAgences" role="tabpanel" aria-labelledby="onglet-agences" tabindex="0">
+      <div class="carte reserve-super-admin">
+        <h3 style="margin-top:0">Ajouter une agence</h3>
+        <div class="grille2">
+          <div class="champ"><label>Nom</label><input type="text" id="agNom" placeholder="Ex : Touristique Express" /></div>
+          <div class="champ"><label>Téléphone</label><input type="text" id="agTel" placeholder="233 xxx xxx" /></div>
+          <div class="champ"><label>Couleur</label><input type="color" id="agCouleur" value="#1D4E89" style="height:42px;padding:4px" /></div>
+          <div class="champ"><label>Couleur pâle</label><input type="color" id="agCouleurPale" value="#E7EEF6" style="height:42px;padding:4px" /></div>
+          <div class="champ"><label>Slogan</label><input type="text" id="agSlogan" placeholder="Ex : Confort & Ponctualité" /></div>
+          <div class="champ"><label>Note (sur 5)</label><input type="number" id="agNote" step="0.1" min="0" max="5" value="4.5" /></div>
+        </div>
+        <p class="petit-texte">Les codes couleur (hex) sont ceux utilisés par l'app mobile pour distinguer visuellement chaque agence — <span id="apercuCouleur" style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1D4E89;vertical-align:middle"></span> aperçu de la couleur principale saisie ci-dessus.</p>
+        <button class="btn-secondaire" onclick="ajouterAgence(event)">Ajouter l'agence</button>
+      </div>
+      <div class="carte">
+        <div class="table-scroll">
+        <table id="tableAgences">
+          <thead><tr><th>Nom</th><th>Téléphone</th><th>Slogan</th><th>Note</th><th>Couleur</th><th>Compte</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TARIFS -->
+    <div class="page" id="pageTarifs" role="tabpanel" aria-labelledby="onglet-tarifs" tabindex="0">
+      <div class="carte">
+        <h3 style="margin-top:0">Tarifs actuels</h3>
+        <div class="champ"><label>Prix aller simple (XAF)</label><input type="number" id="tPrixSimple" /></div>
+        <div class="champ"><label>Prix aller-retour (XAF)</label><input type="number" id="tPrixAr" /></div>
+        <div class="champ"><label>Commission de service (XAF)</label><input type="number" id="tCommission" /></div>
+        <button class="btn-principal" onclick="sauvegarderTarifs()">Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- RÉSERVATIONS -->
+    <div class="page" id="pageReservations" role="tabpanel" aria-labelledby="onglet-reservations" tabindex="0">
+      <div class="carte">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">Volume de réservations par heure d'achat</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" id="afDepuis" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--bordure);font-size:13px" />
+            <span class="petit-texte">à</span>
+            <input type="date" id="afJusqua" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--bordure);font-size:13px" />
+            <button class="btn-discret" onclick="appliquerFiltreAffluence()">Appliquer</button>
+            <button class="btn-discret" onclick="reinitialiserFiltreAffluence()">Tout l'historique</button>
+          </div>
+        </div>
+        <p class="petit-texte" id="afPeriodeAffichee" style="margin:0 0 10px">Toutes agences confondues, toute la période.</p>
+        <div id="afGraphique"></div>
+      </div>
+
+      <div class="carte">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+          <h3 style="margin:0">Réservations récentes</h3>
+          <button class="btn-discret" onclick="chargerReservations()">Actualiser</button>
+        </div>
+        <div class="champ">
+          <input type="text" id="rechercheReservations" placeholder="Rechercher une réf. ou un voyageur…" oninput="filtrerReservations()" />
+        </div>
+        <p id="rechercheReservationsVide" class="etat-vide" style="display:none">Aucun résultat pour cette recherche.</p>
+        <div class="table-scroll">
+        <table id="tableReservations">
+          <thead><tr><th>Réf.</th><th>Agence</th><th>Trajet</th><th>Voyageur</th><th>Total</th><th>Statut</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPTES (réservé au super administrateur) -->
+    <div class="page" id="pageComptes" role="tabpanel" aria-labelledby="onglet-comptes" tabindex="0">
+      <div class="carte">
+        <h3 style="margin-top:0">Créer un compte</h3>
+        <div class="grille2">
+          <div class="champ"><label>Identifiant</label><input type="text" id="cuIdentifiant" autocapitalize="none" /></div>
+          <div class="champ"><label>Mot de passe</label><input type="password" id="cuMotDePasse" placeholder="8 caractères min." /></div>
+          <div class="champ"><label>Nom (optionnel)</label><input type="text" id="cuNom" /></div>
+          <div class="champ"><label>Rôle</label>
+            <select id="cuRole">
+              <option value="comptable">Comptable</option>
+              <option value="support_client">Support client</option>
+              <option value="super_admin">Super administrateur</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-secondaire" onclick="creerUtilisateur(event)">Créer le compte</button>
+      </div>
+      <div class="carte">
+        <div class="table-scroll">
+        <table id="tableUtilisateurs">
+          <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOURNAL D'AUDIT (réservé au super administrateur) -->
+    <div class="page" id="pageJournal" role="tabpanel" aria-labelledby="onglet-journal" tabindex="0">
+      <div class="carte">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+          <h3 style="margin:0">Journal d'audit</h3>
+          <button class="btn-discret" onclick="chargerJournal()">Actualiser</button>
+        </div>
+        <p class="petit-texte" style="margin:0 0 10px">200 actions les plus récentes (création/modification/suppression d'agences, trajets, tarifs et comptes).</p>
+        <div class="table-scroll">
+        <table id="tableJournal">
+          <thead><tr><th>Date</th><th>Acteur</th><th>Rôle</th><th>Action</th><th>Cible</th><th>Détails</th><th>IP</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ⚠️ Si votre backend change d'adresse, mettez à jour cette ligne.
+const API_URL = 'https://londo1.netlify.app/api';
+
+// ── Authentification — deux modes coexistants (RBAC 12/09/2026) ──
+// 'compte' : jeton JWT individuel émis par /admin/connexion (Authorization: Bearer).
+// 'legacy' : ADMIN_TOKEN historique (en-tête X-Admin-Token), traité côté
+// serveur comme un super_admin sans identité individuelle — voir
+// _lib/rbac.js. Le rôle affiché/appliqué ici est toujours celui renvoyé
+// par le serveur (ou 'super_admin' en mode legacy), jamais deviné.
+function modeAuth() { return localStorage.getItem('londo_admin_mode') || 'compte'; }
+function jetonAdmin() { return localStorage.getItem('londo_admin_jwt') || ''; }
+function tokenLegacy() { return localStorage.getItem('londo_admin_token') || ''; }
+function roleAdmin() { return localStorage.getItem('londo_admin_role') || ''; }
+function identifiantAdmin() { return localStorage.getItem('londo_admin_identifiant') || ''; }
+
+const LABEL_ROLE = { super_admin: 'Super administrateur', comptable: 'Comptable', support_client: 'Support client' };
+
+function basculerModeConnexion(mode) {
+  document.getElementById('modeCompte').classList.toggle('actif', mode === 'compte');
+  document.getElementById('modeLegacy').classList.toggle('actif', mode === 'legacy');
+  document.getElementById('formCompte').style.display = mode === 'compte' ? 'block' : 'none';
+  document.getElementById('formLegacy').style.display = mode === 'legacy' ? 'block' : 'none';
+}
+
+// Échappement HTML (voir simulation d'attaque du 30/08/2026) : mêmes
+// données qu'agence.html, en pire — cette page voit les réservations de
+// TOUTES les agences, et détient le ADMIN_TOKEN complet en localStorage.
+// Un nom de voyageur malveillant, entré via une réservation normale par
+// n'importe quel client de l'app, s'exécutait ici dès l'ouverture de
+// l'onglet Réservations et pouvait exfiltrer ce jeton — accès admin
+// complet pour l'attaquant.
+function escapeHtml(valeur) {
+  return String(valeur ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// Pour un argument texte dans un onclick="..." inline : JSON.stringify
+// produit un littéral JS correctement échappé (guillemets, antislashs...),
+// puis escapeHtml() protège le tout pour le contexte attribut HTML qui
+// l'entoure. Le `.replace(/'/g, ...)` utilisé plus bas avant ce correctif
+// ne protégeait que le guillemet simple, pas le double (qui délimite
+// l'attribut onclick lui-même) — un nom d'agence contenant `">` en
+// sortait complètement pour injecter une balise arbitraire.
+function versArgJs(valeur) {
+  return escapeHtml(JSON.stringify(String(valeur ?? '')));
+}
+
+async function appelAdmin(chemin, options = {}) {
+  const entetes = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (modeAuth() === 'legacy') entetes['X-Admin-Token'] = tokenLegacy();
+  else entetes['Authorization'] = `Bearer ${jetonAdmin()}`;
+  const res = await fetch(`${API_URL}${chemin}`, { ...options, headers: entetes });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+  return data;
+}
+
+// Toasts empilables, en haut à droite, avec fermeture automatique pour
+// les succès et fermeture manuelle pour les erreurs (une erreur ne doit
+// pas disparaître toute seule avant que l'admin ait eu le temps de la lire).
+function afficherToast(texte, type, { persistant = (type === 'erreur'), duree = 4000 } = {}) {
+  const conteneur = document.getElementById('toasts');
+  const toast = document.createElement('div');
+  toast.className = `toast msg-${type}`;
+  toast.setAttribute('role', type === 'erreur' ? 'alert' : 'status');
+  toast.innerHTML = `<span>${escapeHtml(texte)}</span><button type="button" class="toast-fermer" aria-label="Fermer la notification" onclick="this.parentElement.remove()">×</button>`
+    + (persistant ? '' : `<div class="toast-barre" style="animation-duration:${duree}ms"></div>`);
+  conteneur.appendChild(toast);
+  if (!persistant) setTimeout(() => toast.remove(), duree);
+  return toast;
+}
+
+// Signature conservée (id, texte, type) pour ne pas toucher tous les
+// appels existants — l'id ne sert plus à cibler une zone fixe dans la
+// page, seulement à distinguer d'éventuels cas particuliers.
+function afficherMsg(id, texte, type) {
+  if (!texte) return;
+  afficherToast(texte, type);
+}
+
+// Bouton en cours de chargement : le contenu d'origine est mémorisé sur
+// l'élément lui-même (dataset), pour ne jamais le perdre même si on
+// rappelle definirChargement(bouton, true, ...) une seconde fois avant
+// la fin du premier appel.
+function definirChargement(bouton, enCours, texteChargement) {
+  if (!bouton) return;
+  if (enCours) {
+    if (bouton.dataset.texteOriginal === undefined) bouton.dataset.texteOriginal = bouton.innerHTML;
+    bouton.disabled = true;
+    bouton.innerHTML = `<span class="spinner" aria-hidden="true"></span>${escapeHtml(texteChargement)}`;
+  } else {
+    bouton.disabled = false;
+    if (bouton.dataset.texteOriginal !== undefined) {
+      bouton.innerHTML = bouton.dataset.texteOriginal;
+      delete bouton.dataset.texteOriginal;
+    }
+  }
+}
+
+// Navigation clavier standard pour un groupe d'onglets ARIA (flèches
+// gauche/droite, Home/End) — pattern "Tabs" du WAI-ARIA Authoring
+// Practices, activation automatique au déplacement du focus.
+function ongletsClavier(event) {
+  const onglets = Array.from(document.querySelectorAll('.onglet[role="tab"]'));
+  const index = onglets.indexOf(event.currentTarget);
+  if (index === -1) return;
+  let cible = null;
+  if (event.key === 'ArrowRight') cible = onglets[(index + 1) % onglets.length];
+  else if (event.key === 'ArrowLeft') cible = onglets[(index - 1 + onglets.length) % onglets.length];
+  else if (event.key === 'Home') cible = onglets[0];
+  else if (event.key === 'End') cible = onglets[onglets.length - 1];
+  if (cible) {
+    event.preventDefault();
+    cible.focus();
+    changerOnglet(cible.dataset.page);
+  }
+}
+// de <input type="time"> ("07:30" / "7:30" selon la saisie).
+// Conversion entre le format stocké ("07h30") et le format natif
+// de <input type="time"> ("07:30" / "7:30" selon la saisie).
+function heureVersChampTime(heure) {
+  const m = String(heure ?? '').match(/^(\d{1,2})h(\d{2})$/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
+}
+function champTimeVersHeure(valeur) {
+  const m = String(valeur ?? '').match(/^(\d{1,2}):(\d{2})$/);
+  return m ? `${m[1].padStart(2, '0')}h${m[2]}` : valeur;
+}
+
+async function seConnecterCompte(evt) {
+  const identifiant = document.getElementById('champAdminIdentifiant').value.trim();
+  const motDePasse = document.getElementById('champAdminMotDePasse').value;
+  if (!identifiant || !motDePasse) { afficherMsg('msgConnexion', 'Identifiant et mot de passe requis.', 'erreur'); return; }
+  const btn = evt && evt.target;
+  definirChargement(btn, true, 'Connexion en cours…');
+  try {
+    const res = await fetch(`${API_URL}/admin/connexion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifiant, motDePasse }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+    localStorage.setItem('londo_admin_mode', 'compte');
+    localStorage.setItem('londo_admin_jwt', data.jeton);
+    localStorage.setItem('londo_admin_identifiant', data.utilisateur.identifiant);
+    localStorage.setItem('londo_admin_role', data.utilisateur.role);
+    afficherAppAdmin();
+  } catch (err) {
+    afficherMsg('msgConnexion', err.message, 'erreur');
+  } finally {
+    definirChargement(btn, false);
+  }
+}
+
+async function seConnecterLegacy(evt) {
+  const saisi = document.getElementById('champToken').value.trim();
+  if (!saisi) { afficherMsg('msgConnexion', 'Veuillez saisir le jeton.', 'erreur'); return; }
+  localStorage.setItem('londo_admin_mode', 'legacy');
+  localStorage.setItem('londo_admin_token', saisi);
+  try {
+    // /admin/tarifs accepte le rôle super_admin (auquel ADMIN_TOKEN est
+    // assimilé côté serveur) — sert ici uniquement à valider le jeton.
+    await appelAdmin('/admin/tarifs');
+    localStorage.setItem('londo_admin_role', 'super_admin');
+    localStorage.setItem('londo_admin_identifiant', 'ADMIN_TOKEN (legacy)');
+    localStorage.removeItem('londo_admin_jwt');
+    afficherAppAdmin();
+  } catch (err) {
+    localStorage.removeItem('londo_admin_token');
+    afficherMsg('msgConnexion', 'Jeton refusé : ' + err.message, 'erreur');
+  }
+}
+
+function seDeconnecter() {
+  ['londo_admin_mode', 'londo_admin_jwt', 'londo_admin_token', 'londo_admin_identifiant', 'londo_admin_role']
+    .forEach(cle => localStorage.removeItem(cle));
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('ecranConnexion').style.display = 'block';
+  document.getElementById('champToken').value = '';
+  document.getElementById('champAdminIdentifiant').value = '';
+  document.getElementById('champAdminMotDePasse').value = '';
+}
+
+// Point d'entrée unique après une connexion réussie (compte individuel
+// ou jeton legacy) : affiche l'identité, applique les droits du rôle
+// aux éléments d'interface, puis charge les données de chaque onglet.
+function afficherAppAdmin() {
+  document.getElementById('ecranConnexion').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const role = roleAdmin();
+  document.getElementById('adminUtilisateurAffiche').textContent = `${identifiantAdmin()} · ${LABEL_ROLE[role] || role}`;
+  appliquerDroitsRole(role);
+  chargerAgences(); chargerTrajets(); chargerTarifs(); chargerReservations(); chargerAffluence();
+  if (role === 'super_admin') { chargerUtilisateurs(); chargerJournal(); }
+}
+
+// Masque plutôt que désactive : un comptable ou un agent support ne
+// voit tout simplement pas les contrôles qu'il n'a pas le droit
+// d'utiliser (voir la matrice de droits), au lieu de les voir échouer
+// avec une erreur serveur au clic — le serveur reste la garde
+// définitive (voir admin-agences.js / admin-trajets.js / admin-tarifs.js),
+// ceci n'est qu'un confort d'affichage.
+function appliquerDroitsRole(role) {
+  const estSuperAdmin = role === 'super_admin';
+  const estComptable = role === 'comptable';
+  document.getElementById('onglet-comptes').style.display = estSuperAdmin ? '' : 'none';
+  document.getElementById('onglet-journal').style.display = estSuperAdmin ? '' : 'none';
+  document.getElementById('onglet-tarifs').style.display = (estSuperAdmin || estComptable) ? '' : 'none';
+  document.querySelectorAll('.reserve-super-admin').forEach(el => { el.style.display = estSuperAdmin ? '' : 'none'; });
+}
+
+function changerOnglet(nom) {
+  document.querySelectorAll('.onglet[data-page]').forEach(el => {
+    const actif = el.dataset.page === nom;
+    el.classList.toggle('actif', actif);
+    el.setAttribute('aria-selected', actif ? 'true' : 'false');
+    el.tabIndex = actif ? 0 : -1;
+  });
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('actif'));
+  document.getElementById('page' + nom.charAt(0).toUpperCase() + nom.slice(1)).classList.add('actif');
+}
+
+// ── TRAJETS ──────────────────────────────────────────────
+async function chargerTrajets() {
+  try {
+    const { trajets } = await appelAdmin('/admin/trajets');
+    const estSuperAdmin = roleAdmin() === 'super_admin';
+    const corps = document.querySelector('#tableTrajets tbody');
+    corps.innerHTML = trajets.length ? trajets.map((t, i) => `
+      <tr style="animation-delay:${Math.min(i, 15) * 30}ms">
+        <td>${escapeHtml(t.agenceNom)}</td>
+        <td>${escapeHtml(t.depart)}</td>
+        <td>${escapeHtml(t.arrivee)}</td>
+        <td>${estSuperAdmin
+          ? `<input type="time" value="${escapeHtml(heureVersChampTime(t.heure))}" style="width:110px" onchange="modifierTrajet(${t.id}, 'heure', champTimeVersHeure(this.value))" />`
+          : escapeHtml(t.heure)}</td>
+        <td>${estSuperAdmin
+          ? `<input type="number" value="${t.places}" style="width:60px" onchange="modifierTrajet(${t.id}, 'places', this.value)" />`
+          : t.places}</td>
+        <td>${estSuperAdmin ? `<button class="btn-danger" onclick="supprimerTrajet(${t.id})">Suppr.</button>` : ''}</td>
+      </tr>
+    `).join('') : `
+      <tr><td colspan="6"><div class="etat-vide">Aucun trajet pour le moment.<br/>
+        <button type="button" class="btn-secondaire" onclick="document.getElementById('nvAgence').focus()">Ajouter un trajet</button>
+      </div></td></tr>
+    `;
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function ajouterTrajet(evt) {
+  const btn = evt && evt.target;
+  definirChargement(btn, true, 'En cours…');
+  try {
+    await appelAdmin('/admin/trajets', {
+      method: 'POST',
+      body: JSON.stringify({
+        agence_id: Number(document.getElementById('nvAgence').value),
+        depart: document.getElementById('nvDepart').value,
+        arrivee: document.getElementById('nvArrivee').value,
+        heure: champTimeVersHeure(document.getElementById('nvHeure').value),
+        places: Number(document.getElementById('nvPlaces').value),
+      }),
+    });
+    document.getElementById('nvHeure').value = '';
+    afficherMsg('msgTrajets', 'Trajet ajouté.', 'ok');
+    chargerTrajets();
+  } catch (err) {
+    afficherMsg('msgTrajets', err.message, 'erreur');
+  } finally {
+    definirChargement(btn, false);
+  }
+}
+
+async function modifierTrajet(id, champ, valeur) {
+  try {
+    await appelAdmin('/admin/trajets', { method: 'PUT', body: JSON.stringify({ id, [champ]: champ === 'places' ? Number(valeur) : valeur }) });
+    afficherMsg('msgTrajets', 'Trajet mis à jour.', 'ok');
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+async function supprimerTrajet(id) {
+  if (!confirm('Supprimer ce trajet ?')) return;
+  try {
+    await appelAdmin('/admin/trajets?id=' + id, { method: 'DELETE' });
+    chargerTrajets();
+  } catch (err) { afficherMsg('msgTrajets', err.message, 'erreur'); }
+}
+
+// ── AGENCES ──────────────────────────────────────────────
+async function chargerAgences() {
+  try {
+    const { agences } = await appelAdmin('/admin/agences');
+    const estSuperAdmin = roleAdmin() === 'super_admin';
+
+    const corps = document.querySelector('#tableAgences tbody');
+    corps.innerHTML = agences.length ? agences.map((a, i) => `
+      <tr style="animation-delay:${Math.min(i, 15) * 30}ms">
+        <td>${escapeHtml(a.nom)}</td>
+        <td>${escapeHtml(a.tel || '')}</td>
+        <td>${escapeHtml(a.slogan || '')}</td>
+        <td>${escapeHtml(a.note ?? '')}</td>
+        <td><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${escapeHtml(a.couleur)};vertical-align:middle" title="${escapeHtml(a.couleur)}"></span></td>
+        <td>${a.compteActif
+          ? `<span class="badge badge-paye">Actif</span><br/><span class="petit-texte">${escapeHtml(a.identifiant)}</span>`
+          : `<span class="badge badge-attente">Aucun</span>`}</td>
+        <td>${estSuperAdmin ? `
+          <button class="btn-discret" onclick="definirIdentifiants(${a.id}, ${versArgJs(a.nom)})">${a.compteActif ? 'Changer' : 'Créer'}</button>
+          <button class="btn-danger" onclick="supprimerAgence(${a.id}, ${versArgJs(a.nom)})">Suppr.</button>
+        ` : ''}</td>
+      </tr>
+    `).join('') : `
+      <tr><td colspan="7"><div class="etat-vide">Aucune agence pour le moment.<br/>
+        <button type="button" class="btn-secondaire" onclick="document.getElementById('agNom').focus()">Ajouter une agence</button>
+      </div></td></tr>
+    `;
+
+    // Le sélecteur "Agence" du formulaire d'ajout de trajet se remplit
+    // depuis cette même liste — jamais deux endroits différents à tenir
+    // à jour manuellement.
+    const select = document.getElementById('nvAgence');
+    if (select) select.innerHTML = agences.map(a => `<option value="${a.id}">${escapeHtml(a.nom)}</option>`).join('');
+  } catch (err) { afficherMsg('msgAgences', err.message, 'erreur'); }
+}
+
+// Définit ou change les identifiants de connexion d'une agence — c'est
+// vous qui choisissez ces identifiants et les communiquez à l'agence
+// (téléphone, WhatsApp…), il n'y a pas d'auto-inscription.
+async function definirIdentifiants(id, nom) {
+  const identifiant = prompt(`Identifiant de connexion pour "${nom}" :`);
+  if (!identifiant) return;
+  const motDePasse = prompt(`Mot de passe pour "${nom}" (8 caractères minimum) :`);
+  if (!motDePasse) return;
+  try {
+    await appelAdmin('/admin/agences', { method: 'PUT', body: JSON.stringify({ id, identifiant, motDePasse }) });
+    afficherMsg('msgAgences', `Identifiants définis pour ${nom}.`, 'ok');
+    chargerAgences();
+  } catch (err) {
+    afficherMsg('msgAgences', err.message, 'erreur');
+  }
+}
+
+async function ajouterAgence(evt) {
+  const nom = document.getElementById('agNom').value.trim();
+  const couleur = document.getElementById('agCouleur').value.trim();
+  const couleurPale = document.getElementById('agCouleurPale').value.trim();
+  if (!nom || !couleur || !couleurPale) {
+    afficherMsg('msgAgences', 'Le nom et les deux couleurs sont requis.', 'erreur');
+    return;
+  }
+  const btn = evt && evt.target;
+  definirChargement(btn, true, 'En cours…');
+  try {
+    await appelAdmin('/admin/agences', {
+      method: 'POST',
+      body: JSON.stringify({
+        nom, couleur, couleurPale,
+        slogan: document.getElementById('agSlogan').value.trim() || null,
+        tel: document.getElementById('agTel').value.trim() || null,
+        note: Number(document.getElementById('agNote').value) || null,
+      }),
+    });
+    document.getElementById('agNom').value = '';
+    document.getElementById('agSlogan').value = '';
+    document.getElementById('agTel').value = '';
+    afficherMsg('msgAgences', 'Agence ajoutée.', 'ok');
+    chargerAgences();
+  } catch (err) {
+    afficherMsg('msgAgences', err.message, 'erreur');
+  } finally {
+    definirChargement(btn, false);
+  }
+}
+
+async function supprimerAgence(id, nom) {
+  if (!confirm(`Supprimer l'agence "${nom}" ?`)) return;
+  try {
+    await appelAdmin('/admin/agences?id=' + id, { method: 'DELETE' });
+    chargerAgences();
+  } catch (err) {
+    // Le backend refuse explicitement si des trajets sont encore
+    // rattachés à cette agence — message affiché tel quel, il est déjà clair.
+    afficherMsg('msgAgences', err.message, 'erreur');
+  }
+}
+
+// Aperçu couleur en direct pendant la saisie.
+document.addEventListener('DOMContentLoaded', () => {
+  const champCouleur = document.getElementById('agCouleur');
+  const apercu = document.getElementById('apercuCouleur');
+  if (champCouleur && apercu) {
+    champCouleur.addEventListener('input', () => { apercu.style.background = champCouleur.value; });
+  }
+});
+
+// ── TARIFS ───────────────────────────────────────────────
+async function chargerTarifs() {
+  const t = await appelAdmin('/admin/tarifs');
+  document.getElementById('tPrixSimple').value = t.prixSimple || '';
+  document.getElementById('tPrixAr').value = t.prixAr || '';
+  document.getElementById('tCommission').value = t.commission || '';
+}
+
+async function sauvegarderTarifs() {
+  try {
+    await appelAdmin('/admin/tarifs', {
+      method: 'PUT',
+      body: JSON.stringify({
+        prixSimple: Number(document.getElementById('tPrixSimple').value),
+        prixAr: Number(document.getElementById('tPrixAr').value),
+        commission: Number(document.getElementById('tCommission').value),
+      }),
+    });
+    afficherMsg('msgTarifs', 'Tarifs enregistrés.', 'ok');
+  } catch (err) { afficherMsg('msgTarifs', err.message, 'erreur'); }
+}
+
+// ── RÉSERVATIONS ─────────────────────────────────────────
+async function chargerReservations() {
+  const { reservations } = await appelAdmin('/admin/reservations');
+  const corps = document.querySelector('#tableReservations tbody');
+  const classeBadge = { 'payé': 'badge-paye', 'en_attente': 'badge-attente', 'echoue': 'badge-echoue', 'expire': 'badge-echoue' };
+  corps.innerHTML = reservations.length ? reservations.map((r, i) => `
+    <tr style="animation-delay:${Math.min(i, 15) * 30}ms">
+      <td>${escapeHtml(r.reference)}</td>
+      <td>${escapeHtml(r.agenceNom)}</td>
+      <td>${escapeHtml(r.depart)} → ${escapeHtml(r.arrivee)}</td>
+      <td>${escapeHtml(r.nomVoyageur)}</td>
+      <td>${Number(r.total).toLocaleString('fr-FR')} XAF</td>
+      <td><span class="badge ${classeBadge[r.statut] || ''}">${escapeHtml(r.statut)}</span></td>
+    </tr>
+  `).join('') : `
+    <tr class="ligne-etat-vide"><td colspan="6"><div class="etat-vide">Aucune réservation pour le moment.</div></td></tr>
+  `;
+  filtrerReservations();
+}
+
+// ── AFFLUENCE (Data Viz — 13/09/2026) ────────────────────────
+// Graphique en barres fait main (SVG inline) plutôt qu'une librairie
+// tierce : le CSP de cette page (voir netlify.toml) n'autorise que
+// script-src 'self' — pas de CDN externe type Chart.js sans l'assouplir.
+// Pour 24 barres, un SVG généré à la volée est plus simple que d'ouvrir
+// cette brèche.
+function rendreGraphiqueAffluence(parHeure) {
+  const conteneur = document.getElementById('afGraphique');
+  const max = Math.max(1, ...parHeure.map((h) => h.reservations));
+  const largeur = 720, hauteur = 180, marge = 4, hauteurAxe = 20;
+  const largeurBarre = (largeur - marge * 2) / 24;
+  const barres = parHeure.map((h, i) => {
+    const hBarre = h.reservations > 0 ? Math.max(2, (h.reservations / max) * (hauteur - hauteurAxe - 10)) : 0;
+    const x = marge + i * largeurBarre;
+    const y = hauteur - hauteurAxe - hBarre;
+    const etiquette = i % 3 === 0
+      ? `<text x="${x + largeurBarre / 2}" y="${hauteur - 4}" font-size="10" fill="var(--gris)" text-anchor="middle">${i}h</text>`
+      : '';
+    return `
+      <rect x="${x + 2}" y="${y}" width="${Math.max(1, largeurBarre - 4)}" height="${hBarre}" rx="3" fill="var(--vert-clair)">
+        <title>${i}h–${(i + 1) % 24}h : ${h.reservations} réservation(s)</title>
+      </rect>
+      ${etiquette}
+    `;
+  }).join('');
+  conteneur.innerHTML = `
+    <svg viewBox="0 0 ${largeur} ${hauteur}" style="width:100%;height:auto;display:block" role="img" aria-label="Réservations par heure d'achat, toutes agences confondues">
+      <line x1="${marge}" y1="${hauteur - hauteurAxe}" x2="${largeur - marge}" y2="${hauteur - hauteurAxe}" stroke="var(--bordure)" stroke-width="1" />
+      ${barres}
+    </svg>
+  `;
+}
+
+async function chargerAffluence(depuis, jusqua) {
+  try {
+    const params = new URLSearchParams();
+    if (depuis) params.set('depuis', depuis);
+    if (jusqua) params.set('jusqua', jusqua);
+    const chemin = '/admin/statistiques' + (params.toString() ? `?${params}` : '');
+    const { periode, total, parHeure } = await appelAdmin(chemin);
+    document.getElementById('afPeriodeAffichee').textContent = (periode.depuis || periode.jusqua)
+      ? `Du ${periode.depuis || '…'} au ${periode.jusqua || "aujourd'hui"} — ${total} réservation(s), toutes agences confondues.`
+      : `Tout l'historique — ${total} réservation(s), toutes agences confondues.`;
+    rendreGraphiqueAffluence(parHeure);
+  } catch (err) {
+    afficherMsg('msgReservations', err.message, 'erreur');
+  }
+}
+
+function appliquerFiltreAffluence() {
+  chargerAffluence(document.getElementById('afDepuis').value || undefined, document.getElementById('afJusqua').value || undefined);
+}
+
+function reinitialiserFiltreAffluence() {
+  document.getElementById('afDepuis').value = '';
+  document.getElementById('afJusqua').value = '';
+  chargerAffluence();
+}
+
+// Filtre local sur la référence et le nom du voyageur (colonnes 1 et 4) —
+// ne relance aucun appel réseau, agit uniquement sur les lignes déjà
+// chargées. La ligne d'état vide (aucune donnée du tout) est exclue du
+// filtrage, sinon une recherche la ferait disparaître aussi et laisserait
+// un tableau totalement blanc.
+function filtrerReservations() {
+  const champ = document.getElementById('rechercheReservations');
+  const requete = champ ? champ.value.trim().toLowerCase() : '';
+  const lignes = document.querySelectorAll('#tableReservations tbody tr:not(.ligne-etat-vide)');
+  let visibles = 0;
+  lignes.forEach(ligne => {
+    const correspond = !requete || ligne.textContent.toLowerCase().includes(requete);
+    ligne.style.display = correspond ? '' : 'none';
+    if (correspond) visibles++;
+  });
+  const indicateur = document.getElementById('rechercheReservationsVide');
+  if (indicateur) indicateur.style.display = (requete && lignes.length > 0 && visibles === 0) ? 'block' : 'none';
+}
+
+// ── COMPTES (super_admin) ──────────────────────────────────
+async function chargerUtilisateurs() {
+  try {
+    const { utilisateurs } = await appelAdmin('/admin/utilisateurs');
+    document.querySelector('#tableUtilisateurs tbody').innerHTML = utilisateurs.length ? utilisateurs.map((u, i) => `
+      <tr style="animation-delay:${Math.min(i, 15) * 30}ms">
+        <td>${escapeHtml(u.identifiant)}</td>
+        <td>${escapeHtml(u.nom || '')}</td>
+        <td>${escapeHtml(LABEL_ROLE[u.role] || u.role)}</td>
+        <td><span class="badge ${u.actif ? 'badge-paye' : 'badge-echoue'}">${u.actif ? 'Actif' : 'Désactivé'}</span></td>
+        <td>
+          <button class="btn-discret" onclick="basculerActifUtilisateur(${u.id}, ${!u.actif})">${u.actif ? 'Désactiver' : 'Réactiver'}</button>
+          <button class="btn-discret" onclick="reinitialiserMotDePasseUtilisateur(${u.id}, ${versArgJs(u.identifiant)})">Mot de passe</button>
+          <button class="btn-danger" onclick="supprimerUtilisateur(${u.id}, ${versArgJs(u.identifiant)})">Suppr.</button>
+        </td>
+      </tr>
+    `).join('') : `
+      <tr><td colspan="5"><div class="etat-vide">Aucun compte pour le moment.</div></td></tr>
+    `;
+  } catch (err) { afficherMsg('msgComptes', err.message, 'erreur'); }
+}
+
+async function creerUtilisateur(evt) {
+  const identifiant = document.getElementById('cuIdentifiant').value.trim();
+  const motDePasse = document.getElementById('cuMotDePasse').value;
+  const nom = document.getElementById('cuNom').value.trim();
+  const role = document.getElementById('cuRole').value;
+  if (!identifiant || !motDePasse) { afficherMsg('msgComptes', 'Identifiant et mot de passe requis.', 'erreur'); return; }
+  const btn = evt && evt.target;
+  definirChargement(btn, true, 'En cours…');
+  try {
+    await appelAdmin('/admin/utilisateurs', {
+      method: 'POST',
+      body: JSON.stringify({ identifiant, motDePasse, nom: nom || null, role }),
+    });
+    document.getElementById('cuIdentifiant').value = '';
+    document.getElementById('cuMotDePasse').value = '';
+    document.getElementById('cuNom').value = '';
+    afficherMsg('msgComptes', 'Compte créé.', 'ok');
+    chargerUtilisateurs();
+  } catch (err) {
+    afficherMsg('msgComptes', err.message, 'erreur');
+  } finally {
+    definirChargement(btn, false);
+  }
+}
+
+async function basculerActifUtilisateur(id, actif) {
+  try {
+    await appelAdmin('/admin/utilisateurs', { method: 'PUT', body: JSON.stringify({ id, actif }) });
+    chargerUtilisateurs();
+  } catch (err) { afficherMsg('msgComptes', err.message, 'erreur'); }
+}
+
+async function reinitialiserMotDePasseUtilisateur(id, identifiant) {
+  const motDePasse = prompt(`Nouveau mot de passe pour "${identifiant}" (8 caractères minimum) :`);
+  if (!motDePasse) return;
+  try {
+    await appelAdmin('/admin/utilisateurs', { method: 'PUT', body: JSON.stringify({ id, motDePasse }) });
+    afficherMsg('msgComptes', 'Mot de passe mis à jour.', 'ok');
+  } catch (err) { afficherMsg('msgComptes', err.message, 'erreur'); }
+}
+
+async function supprimerUtilisateur(id, identifiant) {
+  if (!confirm(`Supprimer le compte "${identifiant}" ?`)) return;
+  try {
+    await appelAdmin('/admin/utilisateurs?id=' + id, { method: 'DELETE' });
+    chargerUtilisateurs();
+  } catch (err) { afficherMsg('msgComptes', err.message, 'erreur'); }
+}
+
+// ── JOURNAL D'AUDIT (super_admin) ──────────────────────────
+async function chargerJournal() {
+  try {
+    const { entrees } = await appelAdmin('/admin/audit?limite=200');
+    document.querySelector('#tableJournal tbody').innerHTML = entrees.length ? entrees.map((e, i) => `
+      <tr style="animation-delay:${Math.min(i, 15) * 20}ms">
+        <td>${escapeHtml(new Date(e.creeLe).toLocaleString('fr-FR'))}</td>
+        <td>${escapeHtml(e.acteurIdentifiant)} <span class="petit-texte">(${escapeHtml(e.acteurType)})</span></td>
+        <td>${escapeHtml(LABEL_ROLE[e.acteurRole] || e.acteurRole || '')}</td>
+        <td>${escapeHtml(e.action)}</td>
+        <td>${escapeHtml(e.cibleType || '')}${e.cibleId ? ' #' + escapeHtml(e.cibleId) : ''}</td>
+        <td class="petit-texte">${e.details ? escapeHtml(JSON.stringify(e.details)) : ''}</td>
+        <td class="petit-texte">${escapeHtml(e.ip || '')}</td>
+      </tr>
+    `).join('') : `
+      <tr><td colspan="7"><div class="etat-vide">Aucune entrée pour le moment.</div></td></tr>
+    `;
+  } catch (err) { afficherMsg('msgJournal', err.message, 'erreur'); }
+}
+
+// Reconnexion automatique si un jeton (compte individuel ou legacy) est
+// déjà enregistré sur cet appareil.
+if ((modeAuth() === 'legacy' && tokenLegacy()) || (modeAuth() === 'compte' && jetonAdmin())) {
+  afficherAppAdmin();
+}
+</script>
+</body>
+</html>
